@@ -7,7 +7,7 @@ $body$
 BEGIN
 	answer := val1 + val2;
 	RETURN answer;
-END
+END;
 $body$
 LANGUAGE plpgsql
 

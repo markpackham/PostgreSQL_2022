@@ -7,7 +7,7 @@ BEGIN
 	FROM item
 	NATURAL JOIN product
 	WHERE product.name = prod_name;
-END
+END;
 $body$
 LANGUAGE plpgsql
 

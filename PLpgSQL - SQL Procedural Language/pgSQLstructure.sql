@@ -5,6 +5,6 @@ CREATE OR REPLACE FUNCTION funct_name(parameter par_type) RETURNS ret_type AS
 $body$
 BEGIN
 --statements
-END
+END;
 $body$
 LANGUAGE plpgsql
