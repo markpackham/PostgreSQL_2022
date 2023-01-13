@@ -5,7 +5,7 @@ $body$
 		num INT DEFAULT 1;
 		total_sum INT DEFAULT 0;
 	BEGIN
-		-- pretty much a While Loop
+		-- regular loop (not a While loop since those are something else)
 		LOOP
 			total_sum := total_sum + num;
 			num := num + 1;
