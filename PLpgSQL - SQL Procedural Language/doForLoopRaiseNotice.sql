@@ -2,6 +2,8 @@
 -- DO executes an anonymous code block, or in other words a transient anonymous function in a procedural language.
 -- The code block is treated as though it were the body of a function with no parameters, returning void. 
 -- It is parsed and executed a single time.
+
+-- our DO Block
 DO
 $body$
 	DECLARE
