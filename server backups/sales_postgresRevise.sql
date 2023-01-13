@@ -5,7 +5,7 @@
 -- Dumped from database version 15.1
 -- Dumped by pg_dump version 15.1
 
--- Started on 2023-01-12 14:53:58
+-- Started on 2023-01-13 12:43:42
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -19,7 +19,7 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- TOC entry 863 (class 1247 OID 16409)
+-- TOC entry 876 (class 1247 OID 16409)
 -- Name: sex_type; Type: TYPE; Schema: public; Owner: postgres
 --
 
@@ -60,6 +60,213 @@ $_$;
 ALTER FUNCTION public.fn_add_intsdollarsigns(integer, integer) OWNER TO postgres;
 
 --
+-- TOC entry 260 (class 1255 OID 16562)
+-- Name: fn_check_month_orders(integer); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.fn_check_month_orders(the_month integer) RETURNS character varying
+    LANGUAGE plpgsql
+    AS $$
+	--Put variables here
+	DECLARE
+		total_orders int;
+	BEGIN
+		--Check total orders
+		SELECT COUNT(purchase_order_number)
+    	INTO total_orders
+		FROM sales_order
+		WHERE EXTRACT(MONTH FROM time_order_taken) = the_month;
+		
+		--Use conditionals to provide different output
+		IF total_orders > 5 THEN
+			RETURN CONCAT(total_orders, ' Orders : Doing Good');
+		ELSEIF total_orders < 5 THEN
+			RETURN CONCAT(total_orders, ' Orders : Doing Bad');
+		ELSE
+			RETURN CONCAT(total_orders, ' Orders : On Target');
+		END IF;	
+	END;
+$$;
+
+
+ALTER FUNCTION public.fn_check_month_orders(the_month integer) OWNER TO postgres;
+
+--
+-- TOC entry 261 (class 1255 OID 16563)
+-- Name: fn_check_month_orderscase(integer); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.fn_check_month_orderscase(the_month integer) RETURNS character varying
+    LANGUAGE plpgsql
+    AS $$
+	DECLARE
+		total_orders int;
+	BEGIN
+		SELECT COUNT(purchase_order_number)
+    	INTO total_orders
+		FROM sales_order
+		WHERE EXTRACT(MONTH FROM time_order_taken) = the_month;
+		
+		-- Case statements are essentially Switch statements, good when If statements would be too long winded
+		CASE
+			WHEN total_orders < 1 THEN
+				RETURN CONCAT(total_orders, ' Orders : Terrible');
+			WHEN total_orders > 0 AND total_orders < 5 THEN
+				RETURN CONCAT(total_orders, ' Orders : Ok');
+			-- Default
+			ELSE
+				RETURN CONCAT(total_orders, ' Orders : Amazing');
+		END CASE;
+	END;
+$$;
+
+
+ALTER FUNCTION public.fn_check_month_orderscase(the_month integer) OWNER TO postgres;
+
+--
+-- TOC entry 248 (class 1255 OID 16561)
+-- Name: fn_get_10_expensive_products(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.fn_get_10_expensive_products() RETURNS TABLE(name character varying, supplier character varying, price numeric)
+    LANGUAGE plpgsql
+    AS $$
+	BEGIN
+		RETURN QUERY
+		SELECT product.name, product.supplier, item.price
+		FROM item
+		NATURAL JOIN product
+		ORDER BY item.price DESC
+		LIMIT 10;
+	END;
+$$;
+
+
+ALTER FUNCTION public.fn_get_10_expensive_products() OWNER TO postgres;
+
+--
+-- TOC entry 245 (class 1255 OID 16557)
+-- Name: fn_get_cust_birthday(integer); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.fn_get_cust_birthday(the_month integer, OUT bd_month integer, OUT bd_day integer, OUT f_name character varying, OUT l_name character varying) RETURNS record
+    LANGUAGE plpgsql
+    AS $$
+	BEGIN
+		SELECT EXTRACT(MONTH FROM birth_date), EXTRACT(DAY FROM birth_date), 
+		first_name, last_name 
+		INTO bd_month, bd_day, f_name, l_name
+    	FROM customer
+    	WHERE EXTRACT(MONTH FROM birth_date) = the_month
+		LIMIT 1;
+		END;
+$$;
+
+
+ALTER FUNCTION public.fn_get_cust_birthday(the_month integer, OUT bd_month integer, OUT bd_day integer, OUT f_name character varying, OUT l_name character varying) OWNER TO postgres;
+
+--
+-- TOC entry 246 (class 1255 OID 16559)
+-- Name: fn_get_cust_birthday_multiple(integer); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.fn_get_cust_birthday_multiple(the_month integer, OUT bd_month integer, OUT bd_day integer, OUT f_name character varying, OUT l_name character varying) RETURNS record
+    LANGUAGE plpgsql
+    AS $$
+	BEGIN
+		SELECT EXTRACT(MONTH FROM birth_date), EXTRACT(DAY FROM birth_date), 
+		first_name, last_name 
+		INTO bd_month, bd_day, f_name, l_name
+    	FROM customer
+    	WHERE EXTRACT(MONTH FROM birth_date) = the_month;
+		END;
+$$;
+
+
+ALTER FUNCTION public.fn_get_cust_birthday_multiple(the_month integer, OUT bd_month integer, OUT bd_day integer, OUT f_name character varying, OUT l_name character varying) OWNER TO postgres;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- TOC entry 217 (class 1259 OID 16420)
+-- Name: sales_person; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.sales_person (
+    first_name character varying(30) NOT NULL,
+    last_name character varying(30) NOT NULL,
+    email character varying(60) NOT NULL,
+    street character varying(50) NOT NULL,
+    city character varying(40) NOT NULL,
+    state character(2) DEFAULT 'PA'::bpchar NOT NULL,
+    zip integer NOT NULL,
+    phone character varying(20) NOT NULL,
+    birth_date date,
+    sex public.sex_type NOT NULL,
+    date_hired timestamp without time zone NOT NULL,
+    id integer NOT NULL
+);
+
+
+ALTER TABLE public.sales_person OWNER TO postgres;
+
+--
+-- TOC entry 239 (class 1255 OID 16551)
+-- Name: fn_get_employees_location(character varying); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.fn_get_employees_location(location character varying) RETURNS SETOF public.sales_person
+    LANGUAGE sql
+    AS $$
+	SELECT *
+FROM sales_person
+WHERE state = location;
+$$;
+
+
+ALTER FUNCTION public.fn_get_employees_location(location character varying) OWNER TO postgres;
+
+--
+-- TOC entry 225 (class 1259 OID 16461)
+-- Name: sales_order; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.sales_order (
+    cust_id integer,
+    sales_person_id integer,
+    time_order_taken timestamp without time zone NOT NULL,
+    purchase_order_number bigint NOT NULL,
+    credit_card_number character varying(16) NOT NULL,
+    credit_card_exper_month smallint NOT NULL,
+    credit_card_exper_day smallint NOT NULL,
+    credit_card_secret_code smallint NOT NULL,
+    name_on_card character varying(100) NOT NULL,
+    id integer NOT NULL
+);
+
+
+ALTER TABLE public.sales_order OWNER TO postgres;
+
+--
+-- TOC entry 238 (class 1255 OID 16550)
+-- Name: fn_get_last_order(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.fn_get_last_order() RETURNS public.sales_order
+    LANGUAGE sql
+    AS $$
+	SELECT *
+    FROM sales_order
+    ORDER BY time_order_taken DESC
+    LIMIT 1;
+$$;
+
+
+ALTER FUNCTION public.fn_get_last_order() OWNER TO postgres;
+
+--
 -- TOC entry 236 (class 1255 OID 16548)
 -- Name: fn_get_number_customers_from_state(character); Type: FUNCTION; Schema: public; Owner: postgres
 --
@@ -91,6 +298,125 @@ $$;
 
 
 ALTER FUNCTION public.fn_get_number_orders_from_customer(cus_fname character varying, cus_lname character varying) OWNER TO postgres;
+
+--
+-- TOC entry 240 (class 1255 OID 16552)
+-- Name: fn_get_price_product_name(character varying); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.fn_get_price_product_name(prod_name character varying) RETURNS numeric
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+-- We can no longer user SELECT, we have to use RETURN for PL/pgSQL
+	RETURN item.price
+	FROM item
+	NATURAL JOIN product
+	WHERE product.name = prod_name;
+END
+$$;
+
+
+ALTER FUNCTION public.fn_get_price_product_name(prod_name character varying) OWNER TO postgres;
+
+--
+-- TOC entry 242 (class 1255 OID 16554)
+-- Name: fn_get_random_number(integer, integer); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.fn_get_random_number(min_val integer, max_val integer) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+	DECLARE
+	rand int;
+BEGIN
+	SELECT random()*(max_val - min_val) + min_val INTO rand;
+	RETURN rand;
+END
+$$;
+
+
+ALTER FUNCTION public.fn_get_random_number(min_val integer, max_val integer) OWNER TO postgres;
+
+--
+-- TOC entry 243 (class 1255 OID 16555)
+-- Name: fn_get_random_salesperon(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.fn_get_random_salesperon() RETURNS character varying
+    LANGUAGE plpgsql
+    AS $$
+	DECLARE
+	rand int;
+	-- store the employee's table record
+	emp record;
+BEGIN
+	-- we have 5 employees in the database
+	SELECT random()*(5 - 1) + 1 INTO rand;
+	SELECT *
+	FROM sales_person
+	INTO emp
+	WHERE id = rand;
+	RETURN CONCAT(emp.first_name, ' ', emp.last_name);
+END;
+$$;
+
+
+ALTER FUNCTION public.fn_get_random_salesperon() OWNER TO postgres;
+
+--
+-- TOC entry 247 (class 1255 OID 16560)
+-- Name: fn_get_sales_people(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.fn_get_sales_people() RETURNS SETOF public.sales_person
+    LANGUAGE plpgsql
+    AS $$
+	BEGIN
+		RETURN QUERY
+		SELECT *
+		FROM sales_person;
+	END;
+$$;
+
+
+ALTER FUNCTION public.fn_get_sales_people() OWNER TO postgres;
+
+--
+-- TOC entry 241 (class 1255 OID 16553)
+-- Name: fn_get_sum(integer, integer); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.fn_get_sum(val1 integer, val2 integer) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+	-- DECLARE block holds variables
+	DECLARE
+	answer int;
+BEGIN
+	answer := val1 + val2;
+	RETURN answer;
+END
+$$;
+
+
+ALTER FUNCTION public.fn_get_sum(val1 integer, val2 integer) OWNER TO postgres;
+
+--
+-- TOC entry 244 (class 1255 OID 16556)
+-- Name: fn_get_sum_in_out(integer, integer); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.fn_get_sum_in_out(v1 integer, v2 integer, OUT answer integer) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+	answer := v1 + v2;
+END;
+$$;
+
+
+ALTER FUNCTION public.fn_get_sum_in_out(v1 integer, v2 integer, OUT answer integer) OWNER TO postgres;
 
 --
 -- TOC entry 233 (class 1255 OID 16545)
@@ -169,10 +495,6 @@ $$;
 
 ALTER FUNCTION public.fn_update_employee_state() OWNER TO postgres;
 
-SET default_tablespace = '';
-
-SET default_table_access_method = heap;
-
 --
 -- TOC entry 215 (class 1259 OID 16400)
 -- Name: customer; Type: TABLE; Schema: public; Owner: postgres
@@ -214,7 +536,7 @@ CREATE SEQUENCE public.customer_id_seq
 ALTER TABLE public.customer_id_seq OWNER TO postgres;
 
 --
--- TOC entry 3412 (class 0 OID 0)
+-- TOC entry 3425 (class 0 OID 0)
 -- Dependencies: 214
 -- Name: customer_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -256,7 +578,7 @@ CREATE SEQUENCE public.item_id_seq
 ALTER TABLE public.item_id_seq OWNER TO postgres;
 
 --
--- TOC entry 3413 (class 0 OID 0)
+-- TOC entry 3426 (class 0 OID 0)
 -- Dependencies: 222
 -- Name: item_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -297,7 +619,7 @@ CREATE SEQUENCE public.product_id_seq
 ALTER TABLE public.product_id_seq OWNER TO postgres;
 
 --
--- TOC entry 3414 (class 0 OID 0)
+-- TOC entry 3427 (class 0 OID 0)
 -- Dependencies: 220
 -- Name: product_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -335,7 +657,7 @@ CREATE SEQUENCE public.product_type_id_seq
 ALTER TABLE public.product_type_id_seq OWNER TO postgres;
 
 --
--- TOC entry 3415 (class 0 OID 0)
+-- TOC entry 3428 (class 0 OID 0)
 -- Dependencies: 218
 -- Name: product_type_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -360,50 +682,6 @@ CREATE TABLE public.sales_item (
 
 
 ALTER TABLE public.sales_item OWNER TO postgres;
-
---
--- TOC entry 225 (class 1259 OID 16461)
--- Name: sales_order; Type: TABLE; Schema: public; Owner: postgres
---
-
-CREATE TABLE public.sales_order (
-    cust_id integer,
-    sales_person_id integer,
-    time_order_taken timestamp without time zone NOT NULL,
-    purchase_order_number bigint NOT NULL,
-    credit_card_number character varying(16) NOT NULL,
-    credit_card_exper_month smallint NOT NULL,
-    credit_card_exper_day smallint NOT NULL,
-    credit_card_secret_code smallint NOT NULL,
-    name_on_card character varying(100) NOT NULL,
-    id integer NOT NULL
-);
-
-
-ALTER TABLE public.sales_order OWNER TO postgres;
-
---
--- TOC entry 217 (class 1259 OID 16420)
--- Name: sales_person; Type: TABLE; Schema: public; Owner: postgres
---
-
-CREATE TABLE public.sales_person (
-    first_name character varying(30) NOT NULL,
-    last_name character varying(30) NOT NULL,
-    email character varying(60) NOT NULL,
-    street character varying(50) NOT NULL,
-    city character varying(40) NOT NULL,
-    state character(2) DEFAULT 'PA'::bpchar NOT NULL,
-    zip integer NOT NULL,
-    phone character varying(20) NOT NULL,
-    birth_date date,
-    sex public.sex_type NOT NULL,
-    date_hired timestamp without time zone NOT NULL,
-    id integer NOT NULL
-);
-
-
-ALTER TABLE public.sales_person OWNER TO postgres;
 
 --
 -- TOC entry 228 (class 1259 OID 16531)
@@ -447,7 +725,7 @@ CREATE SEQUENCE public.sales_item_id_seq
 ALTER TABLE public.sales_item_id_seq OWNER TO postgres;
 
 --
--- TOC entry 3416 (class 0 OID 0)
+-- TOC entry 3429 (class 0 OID 0)
 -- Dependencies: 226
 -- Name: sales_item_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -472,7 +750,7 @@ CREATE SEQUENCE public.sales_order_id_seq
 ALTER TABLE public.sales_order_id_seq OWNER TO postgres;
 
 --
--- TOC entry 3417 (class 0 OID 0)
+-- TOC entry 3430 (class 0 OID 0)
 -- Dependencies: 224
 -- Name: sales_order_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -497,7 +775,7 @@ CREATE SEQUENCE public.sales_person_id_seq
 ALTER TABLE public.sales_person_id_seq OWNER TO postgres;
 
 --
--- TOC entry 3418 (class 0 OID 0)
+-- TOC entry 3431 (class 0 OID 0)
 -- Dependencies: 216
 -- Name: sales_person_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -506,7 +784,7 @@ ALTER SEQUENCE public.sales_person_id_seq OWNED BY public.sales_person.id;
 
 
 --
--- TOC entry 3219 (class 2604 OID 16403)
+-- TOC entry 3232 (class 2604 OID 16403)
 -- Name: customer id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -514,7 +792,7 @@ ALTER TABLE ONLY public.customer ALTER COLUMN id SET DEFAULT nextval('public.cus
 
 
 --
--- TOC entry 3224 (class 2604 OID 16452)
+-- TOC entry 3237 (class 2604 OID 16452)
 -- Name: item id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -522,7 +800,7 @@ ALTER TABLE ONLY public.item ALTER COLUMN id SET DEFAULT nextval('public.item_id
 
 
 --
--- TOC entry 3223 (class 2604 OID 16438)
+-- TOC entry 3236 (class 2604 OID 16438)
 -- Name: product id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -530,7 +808,7 @@ ALTER TABLE ONLY public.product ALTER COLUMN id SET DEFAULT nextval('public.prod
 
 
 --
--- TOC entry 3222 (class 2604 OID 16431)
+-- TOC entry 3235 (class 2604 OID 16431)
 -- Name: product_type id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -538,7 +816,7 @@ ALTER TABLE ONLY public.product_type ALTER COLUMN id SET DEFAULT nextval('public
 
 
 --
--- TOC entry 3229 (class 2604 OID 16484)
+-- TOC entry 3242 (class 2604 OID 16484)
 -- Name: sales_item id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -546,7 +824,7 @@ ALTER TABLE ONLY public.sales_item ALTER COLUMN id SET DEFAULT nextval('public.s
 
 
 --
--- TOC entry 3225 (class 2604 OID 16464)
+-- TOC entry 3238 (class 2604 OID 16464)
 -- Name: sales_order id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -554,7 +832,7 @@ ALTER TABLE ONLY public.sales_order ALTER COLUMN id SET DEFAULT nextval('public.
 
 
 --
--- TOC entry 3221 (class 2604 OID 16424)
+-- TOC entry 3234 (class 2604 OID 16424)
 -- Name: sales_person id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -562,7 +840,7 @@ ALTER TABLE ONLY public.sales_person ALTER COLUMN id SET DEFAULT nextval('public
 
 
 --
--- TOC entry 3394 (class 0 OID 16400)
+-- TOC entry 3407 (class 0 OID 16400)
 -- Dependencies: 215
 -- Data for Name: customer; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -592,7 +870,7 @@ Christopher	Robinson	christopherrobinson@ibm.com	IBM	754 Cedar St	Pharr	TX	78577
 
 
 --
--- TOC entry 3402 (class 0 OID 16449)
+-- TOC entry 3415 (class 0 OID 16449)
 -- Dependencies: 223
 -- Data for Name: item; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -652,7 +930,7 @@ COPY public.item (product_id, size, color, picture, price, id) FROM stdin;
 
 
 --
--- TOC entry 3400 (class 0 OID 16435)
+-- TOC entry 3413 (class 0 OID 16435)
 -- Dependencies: 221
 -- Data for Name: product; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -675,7 +953,7 @@ COPY public.product (type_id, name, supplier, description, id) FROM stdin;
 
 
 --
--- TOC entry 3398 (class 0 OID 16428)
+-- TOC entry 3411 (class 0 OID 16428)
 -- Dependencies: 219
 -- Data for Name: product_type; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -688,7 +966,7 @@ Athletic	3
 
 
 --
--- TOC entry 3406 (class 0 OID 16478)
+-- TOC entry 3419 (class 0 OID 16478)
 -- Dependencies: 227
 -- Data for Name: sales_item; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -898,7 +1176,7 @@ COPY public.sales_item (item_id, sales_order_id, quantity, discount, taxable, sa
 
 
 --
--- TOC entry 3404 (class 0 OID 16461)
+-- TOC entry 3417 (class 0 OID 16461)
 -- Dependencies: 225
 -- Data for Name: sales_order; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -1008,7 +1286,7 @@ COPY public.sales_order (cust_id, sales_person_id, time_order_taken, purchase_or
 
 
 --
--- TOC entry 3396 (class 0 OID 16420)
+-- TOC entry 3409 (class 0 OID 16420)
 -- Dependencies: 217
 -- Data for Name: sales_person; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -1023,7 +1301,7 @@ Jessica	Thompson	jessicathompson@fedex.com	691 Third Place	Sylmar	CA	91342	349-2
 
 
 --
--- TOC entry 3419 (class 0 OID 0)
+-- TOC entry 3432 (class 0 OID 0)
 -- Dependencies: 214
 -- Name: customer_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
@@ -1032,7 +1310,7 @@ SELECT pg_catalog.setval('public.customer_id_seq', 20, true);
 
 
 --
--- TOC entry 3420 (class 0 OID 0)
+-- TOC entry 3433 (class 0 OID 0)
 -- Dependencies: 222
 -- Name: item_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
@@ -1041,7 +1319,7 @@ SELECT pg_catalog.setval('public.item_id_seq', 50, true);
 
 
 --
--- TOC entry 3421 (class 0 OID 0)
+-- TOC entry 3434 (class 0 OID 0)
 -- Dependencies: 220
 -- Name: product_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
@@ -1050,7 +1328,7 @@ SELECT pg_catalog.setval('public.product_id_seq', 13, true);
 
 
 --
--- TOC entry 3422 (class 0 OID 0)
+-- TOC entry 3435 (class 0 OID 0)
 -- Dependencies: 218
 -- Name: product_type_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
@@ -1059,7 +1337,7 @@ SELECT pg_catalog.setval('public.product_type_id_seq', 3, true);
 
 
 --
--- TOC entry 3423 (class 0 OID 0)
+-- TOC entry 3436 (class 0 OID 0)
 -- Dependencies: 226
 -- Name: sales_item_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
@@ -1068,7 +1346,7 @@ SELECT pg_catalog.setval('public.sales_item_id_seq', 200, true);
 
 
 --
--- TOC entry 3424 (class 0 OID 0)
+-- TOC entry 3437 (class 0 OID 0)
 -- Dependencies: 224
 -- Name: sales_order_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
@@ -1077,7 +1355,7 @@ SELECT pg_catalog.setval('public.sales_order_id_seq', 100, true);
 
 
 --
--- TOC entry 3425 (class 0 OID 0)
+-- TOC entry 3438 (class 0 OID 0)
 -- Dependencies: 216
 -- Name: sales_person_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
@@ -1086,7 +1364,7 @@ SELECT pg_catalog.setval('public.sales_person_id_seq', 5, true);
 
 
 --
--- TOC entry 3231 (class 2606 OID 16407)
+-- TOC entry 3244 (class 2606 OID 16407)
 -- Name: customer customer_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1095,7 +1373,7 @@ ALTER TABLE ONLY public.customer
 
 
 --
--- TOC entry 3239 (class 2606 OID 16454)
+-- TOC entry 3252 (class 2606 OID 16454)
 -- Name: item item_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1104,7 +1382,7 @@ ALTER TABLE ONLY public.item
 
 
 --
--- TOC entry 3237 (class 2606 OID 16442)
+-- TOC entry 3250 (class 2606 OID 16442)
 -- Name: product product_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1113,7 +1391,7 @@ ALTER TABLE ONLY public.product
 
 
 --
--- TOC entry 3235 (class 2606 OID 16433)
+-- TOC entry 3248 (class 2606 OID 16433)
 -- Name: product_type product_type_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1122,7 +1400,7 @@ ALTER TABLE ONLY public.product_type
 
 
 --
--- TOC entry 3243 (class 2606 OID 16486)
+-- TOC entry 3256 (class 2606 OID 16486)
 -- Name: sales_item sales_item_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1131,7 +1409,7 @@ ALTER TABLE ONLY public.sales_item
 
 
 --
--- TOC entry 3241 (class 2606 OID 16466)
+-- TOC entry 3254 (class 2606 OID 16466)
 -- Name: sales_order sales_order_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1140,7 +1418,7 @@ ALTER TABLE ONLY public.sales_order
 
 
 --
--- TOC entry 3233 (class 2606 OID 16426)
+-- TOC entry 3246 (class 2606 OID 16426)
 -- Name: sales_person sales_person_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1149,7 +1427,7 @@ ALTER TABLE ONLY public.sales_person
 
 
 --
--- TOC entry 3245 (class 2606 OID 16455)
+-- TOC entry 3258 (class 2606 OID 16455)
 -- Name: item item_product_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1158,7 +1436,7 @@ ALTER TABLE ONLY public.item
 
 
 --
--- TOC entry 3244 (class 2606 OID 16443)
+-- TOC entry 3257 (class 2606 OID 16443)
 -- Name: product product_type_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1167,7 +1445,7 @@ ALTER TABLE ONLY public.product
 
 
 --
--- TOC entry 3248 (class 2606 OID 16487)
+-- TOC entry 3261 (class 2606 OID 16487)
 -- Name: sales_item sales_item_item_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1176,7 +1454,7 @@ ALTER TABLE ONLY public.sales_item
 
 
 --
--- TOC entry 3249 (class 2606 OID 16492)
+-- TOC entry 3262 (class 2606 OID 16492)
 -- Name: sales_item sales_item_sales_order_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1185,7 +1463,7 @@ ALTER TABLE ONLY public.sales_item
 
 
 --
--- TOC entry 3246 (class 2606 OID 16467)
+-- TOC entry 3259 (class 2606 OID 16467)
 -- Name: sales_order sales_order_cust_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1194,7 +1472,7 @@ ALTER TABLE ONLY public.sales_order
 
 
 --
--- TOC entry 3247 (class 2606 OID 16472)
+-- TOC entry 3260 (class 2606 OID 16472)
 -- Name: sales_order sales_order_sales_person_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1202,7 +1480,7 @@ ALTER TABLE ONLY public.sales_order
     ADD CONSTRAINT sales_order_sales_person_id_fkey FOREIGN KEY (sales_person_id) REFERENCES public.sales_person(id);
 
 
--- Completed on 2023-01-12 14:53:58
+-- Completed on 2023-01-13 12:43:42
 
 --
 -- PostgreSQL database dump complete

@@ -11,4 +11,6 @@ $body$
 $body$
 LANGUAGE plpgsql
 
-SELECT (fn_get_sales_people()).*;
+-- SELECT (fn_get_sales_people()).*;
+
+-- SELECT (fn_get_sales_people()).street;
