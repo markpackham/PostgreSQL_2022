@@ -1,3 +1,7 @@
+-- Cursors are an  efficient way to return large row sets from functions.
+-- in PL/pgSQL FOR loops automatically use a cursor internally to avoid memory problems
+-- https://www.postgresql.org/docs/current/plpgsql-cursors.html
+
 DO
 $body$
 DECLARE
